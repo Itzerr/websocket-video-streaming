@@ -13,7 +13,7 @@
 </body>
 
 <script>
-  let bytesReceived = 0;
+  let totalBytesReceived = 0;
   const video = document.querySelector('video');
   const mediaSource = new MediaSource();
   video.src = URL.createObjectURL(mediaSource);
@@ -25,9 +25,15 @@
   const client = new WebSocket(`ws://${location.hostname}:${Number(location.port) + 1}`); client.onopen = e => {
     console.log('connection established');
 
-    client.send(JSON.stringify({ type: 'video', filePath: 'video.webm' }));
+    client.send(JSON.stringify({
+      type: 'video_info',
+      filePath: 'video.webm'
+    }));
+    //client.send(JSON.stringify({ type: 'video', filePath: 'video.webm' }));
     //client.send(JSON.stringify({ type: 'codecs', filePath: 'video.mp4' }));
   }
+
+  let fileSize = 0;
 
   client.onmessage = async e => {
     const msg = JSON.parse(e.data);
@@ -38,18 +44,28 @@
 
         break;
       }
+      case 'video_info': {
+        fileSize = msg.fileSize;
+        client.send(JSON.stringify({ type: 'video', filePath: 'video.webm' }));
+        break;
+      }
       case 'video': {
         const array = new Uint8Array(msg.data);
-        bytesReceived += array.length;
+        totalBytesReceived += array.length;
         for (let i = 0; i < array.length; i++) {
           array[i] = msg.data[i];
         }
         sourceBuffer.appendBuffer(array);
         video.ontimeupdate = e => {
+          if (totalBytesReceived >= fileSize) {
+            video.ontimeupdate = null;
+            mediaSource.endOfStream();
+          }
           const buffered = video.buffered.end(0);
           if (video.currentTime + 1 > buffered) {
             console.log(video.currentTime, '/', buffered)
-            client.send(JSON.stringify({ type: 'video', filePath: 'video.webm', start: bytesReceived }));
+            console.log('bytes received: ', totalBytesReceived);
+            client.send(JSON.stringify({ type: 'video', filePath: 'video.webm', start: totalBytesReceived }));
           }
         }
         break;
