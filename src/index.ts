@@ -14,7 +14,7 @@ const expressServer = app.listen(3000, () => {
 
 const kibibyte = 1024;
 const mebibyte = 1024 * 1024;
-const defaultChunkSize = mebibyte * 0.1;
+const defaultChunkSize = Math.floor(mebibyte * 0.1);
 
 const server = new WebSocketServer({ port: 3001 }, () => {
   const address = server.address() as AddressInfo;
@@ -84,8 +84,10 @@ server.on('connection', async (client, req) => {
         const data = buffer.toJSON().data;
 
         client.send(JSON.stringify({
-          type: 'video',
+          type: msg.type,
           filePath: msg.filePath,
+          start: start,
+          end: start + data.length,
           data: data
         }));
         break;
