@@ -51,7 +51,7 @@
       }
       case 'video': {
         const array = new Uint8Array(msg.data);
-        totalBytesReceived += array.length;
+        totalBytesReceived = msg.end
         for (let i = 0; i < array.length; i++) {
           array[i] = msg.data[i];
         }
