@@ -47,8 +47,28 @@ server.on('connection', async (client, req) => {
 
   client.on('message', async (data: string) => {
     const msg = JSON.parse(data);
+    console.log('received message', msg);
 
     switch (msg.type) {
+      case 'video_info': {
+        if (!msg.filePath) {
+          break;
+        }
+
+        const filePath = path.resolve('./assets/videos/', msg.filePath);
+        if (!filePath) {
+          break;
+        }
+
+        const fileSize = fs.statSync(filePath).size;
+
+        client.send(JSON.stringify({
+          type: msg.type,
+          filePath: msg.filePath,
+          fileSize: fileSize
+        }));
+        break;
+      }
       case 'video': {
         if (!msg.filePath) {
           break;
