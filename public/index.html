@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset='utf-8'>
+  <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+  <title>WebSocket Client</title>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+</head>
+
+<body>
+  <video controls autoplay></video>
+</body>
+
+<script>
+  let bytesReceived = 0;
+  const video = document.querySelector('video');
+  const mediaSource = new MediaSource();
+  video.src = URL.createObjectURL(mediaSource);
+  let sourceBuffer;
+  mediaSource.onsourceopen = e => {
+    sourceBuffer = mediaSource.addSourceBuffer('video/webm');
+  }
+
+  const client = new WebSocket('ws://localhost:3001'); client.onopen = e => {
+    console.log('connection established');
+
+    client.send(JSON.stringify({ type: 'video', filePath: 'video.webm' }));
+    //client.send(JSON.stringify({ type: 'codecs', filePath: 'video.mp4' }));
+  }
+
+  client.onmessage = async e => {
+    const msg = JSON.parse(e.data);
+    console.log(msg);
+
+    switch (msg.type) {
+      case 'codecs': {
+
+        break;
+      }
+      case 'video': {
+        const array = new Uint8Array(msg.data);
+        bytesReceived += array.length;
+        for (let i = 0; i < array.length; i++) {
+          array[i] = msg.data[i];
+        }
+        sourceBuffer.appendBuffer(array);
+        video.ontimeupdate = e => {
+          const buffered = video.buffered.end(0);
+          if (video.currentTime + 1 > buffered) {
+            console.log(video.currentTime, '/', buffered)
+            client.send(JSON.stringify({ type: 'video', filePath: 'video.webm', start: bytesReceived }));
+          }
+        }
+        break;
+      }
+    }
+  }
+</script>
+
+</html>
