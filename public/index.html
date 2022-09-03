@@ -13,6 +13,8 @@
 </body>
 
 <script>
+  let fileSize = 0;
+  let sentVideoRequest = false;
   let totalBytesReceived = 0;
   const video = document.querySelector('video');
   const mediaSource = new MediaSource();
@@ -33,7 +35,15 @@
     //client.send(JSON.stringify({ type: 'codecs', filePath: 'video.mp4' }));
   }
 
-  let fileSize = 0;
+  function sendVideoRequest(client, filePath, start) {
+    start ??= 0;
+    sentVideoRequest = true;
+    client.send(JSON.stringify({
+      type: 'video',
+      filePath,
+      start
+    }));
+  }
 
   client.onmessage = async e => {
     const msg = JSON.parse(e.data);
@@ -46,26 +56,30 @@
       }
       case 'video_info': {
         fileSize = msg.fileSize;
-        client.send(JSON.stringify({ type: 'video', filePath: 'video.webm' }));
+        sendVideoRequest(client, 'video.webm');
         break;
       }
       case 'video': {
+        sentVideoRequest = false;
         const array = new Uint8Array(msg.data);
-        totalBytesReceived = msg.end
+        totalBytesReceived = msg.end;
         for (let i = 0; i < array.length; i++) {
           array[i] = msg.data[i];
         }
         sourceBuffer.appendBuffer(array);
         video.ontimeupdate = e => {
+          if (sentVideoRequest) {
+            return;
+          }
           if (totalBytesReceived >= fileSize) {
             video.ontimeupdate = null;
             mediaSource.endOfStream();
           }
           const buffered = video.buffered.end(0);
-          if (video.currentTime + 1 > buffered) {
+          if (video.currentTime + 5 > buffered) {
             console.log(video.currentTime, '/', buffered)
             console.log('bytes received: ', totalBytesReceived);
-            client.send(JSON.stringify({ type: 'video', filePath: 'video.webm', start: totalBytesReceived }));
+            sendVideoRequest(client, 'video.webm', totalBytesReceived);
           }
         }
         break;
