@@ -22,7 +22,7 @@
     sourceBuffer = mediaSource.addSourceBuffer('video/webm');
   }
 
-  const client = new WebSocket('ws://localhost:3001'); client.onopen = e => {
+  const client = new WebSocket(`ws://${location.hostname}:${Number(location.port) + 1}`); client.onopen = e => {
     console.log('connection established');
 
     client.send(JSON.stringify({ type: 'video', filePath: 'video.webm' }));
